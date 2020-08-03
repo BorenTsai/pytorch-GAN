@@ -1,6 +1,6 @@
 import torch
 import torch.optim as optim
-
+import numpy as np
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
@@ -49,34 +49,37 @@ class Trainer:
         self.criterion = torch.nn.BCELoss()
 
     def train(self):
-        print('\n Staring Training')
+        print('\nStaring Training')
         writer = SummaryWriter(self.log_dir)
+        
+        total_steps = 0
 
         for epoch in range(self.num_epochs):
-            pbar = tqdm(total=len(self.dataloader.dataset))
+            discriminator_loss = []
+            generator_loss = []
             for data, _ in self.dataloader:
 
-                if self.gpu_id:
+                if self.is_gpu:
                     data = data.to(self.gpu_id)
 
                 D_batch_info = self.train_discriminator(data=data)
-
-                writer.add_scalar('Discriminator/TotalLoss', D_batch_info['loss'])
-                writer.add_scalar('Discriminator/RealLoss', D_batch_info['real_loss'])
-                writer.add_scalar('Discriminator/FakeLoss', D_batch_info['fake_loss'])
-
                 G_batch_info = self.train_generator(data=data)
+                
+                discriminator_loss.append(D_batch_info['loss'])
+                generator_loss.append(G_batch_info['loss'])
 
-                writer.add_scalar('Generator/Loss', D_batch_info['loss'])
+            mean_D_loss = np.asarray(discriminator_loss).mean()
+            mean_G_loss = np.asarray(generator_loss).mean()
 
-                pbar.set_description('Epoch {}, Discriminator Loss {}, Generator Loss {}'.format(epoch, D_batch_info['loss'], G_batch_info['loss']))
-                pbar.update(n=data.size(0))
+            print('Epoch: {}, Mean Discriminator Loss: {}, Mean Generator Loss: {}'.format(epoch, mean_D_loss, mean_G_loss))
+            writer.add_scalar('Discriminator/AvgTotalLoss', mean_D_loss, epoch)
+            writer.add_scalar('Generator/AvgLoss', mean_G_loss, epoch)
 
-            if epoch % 50 == 0:
-                self.write_images(writer)
+            if epoch % 10 == 0:
+                self.write_images(writer, epoch=epoch)
 
         print('\nCompleted Training')
-        self.write_images(writer)
+        self.write_images(writer, self.num_epochs)
 
     def train_discriminator(self, data):
         for step in range(self.k):
@@ -84,6 +87,8 @@ class Trainer:
 
             # create fake samples
             noise = torch.randn(data.size(0), self.generator.z_dim)
+            if self.is_gpu:
+                noise = noise.to(self.gpu_id)
             fake_samples = self.generator(noise)
 
             # get discriminator predictions
@@ -91,9 +96,17 @@ class Trainer:
             D_fake = self.discriminator(fake_samples)
 
             # compute loss and backprop
-            real_loss = self.criterion(D_real, torch.zeros_like(D_real))
-            fake_loss = self.criterion(D_fake, torch.ones_like(D_fake))
+            ones = torch.ones(D_real.size(0), 1)
+            zeros = torch.zeros(D_fake.size(0), 1)
+
+            if self.is_gpu:
+                ones = ones.to(self.gpu_id)
+                zeros = zeros.to(self.gpu_id)
+
+            real_loss = self.criterion(D_real, ones)
+            fake_loss = self.criterion(D_fake, zeros)
             total_loss = real_loss + fake_loss
+
             total_loss.backward()
             self.D_optim.step()
 
@@ -110,13 +123,18 @@ class Trainer:
 
         # create fake samples
         noise = torch.randn(data.size(0), self.generator.z_dim)
+        if self.is_gpu:
+            noise = noise.to(self.gpu_id)
         fake_samples = self.generator(noise)
 
         # test discriminator
         D_pred = self.discriminator(fake_samples)
 
         # compute loss and backprop
-        loss = self.criterion(D_pred, torch.ones_like(D_pred))
+        ones = torch.ones(D_pred.size(0), 1)
+        if self.is_gpu:
+            ones = ones.to(self.gpu_id)
+        loss = self.criterion(D_pred, ones)
         loss.backward()
         self.G_optim.step()
 
@@ -125,11 +143,10 @@ class Trainer:
         }
         return batch_info
 
-    def write_images(self, writer):
+    def write_images(self, writer, epoch):
         samples = self.generator.generate_samples(self.num_samples)
-        import ipdb; ipdb.set_trace()
         for idx, sample in enumerate(samples):
-            writer.add_image('Sample No. {}'.format(idx), sample)
+            writer.add_image('Sample No. {}'.format(idx), sample, epoch)
 
 
 

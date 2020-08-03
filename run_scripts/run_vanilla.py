@@ -37,6 +37,7 @@ def run_experiment(**kwargs):
         num_epochs=kwargs['num_epochs'],
         num_samples=kwargs['num_samples'],
         log_dir=kwargs['log_dir'],
+        gpu_id=kwargs['gpu_id']
     )
 
     T.train()
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     img_size = [28, 28, 1]
 
     config = {
-        'gpu_id': None,
+        'gpu_id': 0,
         'img_size': img_size,
 
         # Generator Params
@@ -66,8 +67,8 @@ if __name__ == '__main__':
 
         # Trainer Params
         'k': 1,
-        'lr': 1e-3,
-        'num_epochs': 100,
+        'lr': 1e-4,
+        'num_epochs': 500,
         'num_samples': 10,
         'log_dir': 'experiments/VanillaGAN'
     }

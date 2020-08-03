@@ -32,7 +32,10 @@ class VanillaD(nn.Module):
                                 hidden_nonlinearity=self.hidden_nonlinearity,
                                 output_nonlinearity=self.out_nonlinearity,
                                 dropout=self.dropout)
-        init_weights(self.model)
+        #init_weights(self.model)
+        
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
 
     def forward(self, x):
         x = x.view(x.size(0), self.input_dim)

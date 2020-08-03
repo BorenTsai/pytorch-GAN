@@ -30,7 +30,12 @@ class VanillaG(nn.Module):
                                 hidden_nonlinearity=self.hidden_nonlinearity,
                                 output_nonlinearity=self.out_nonlinearity)
 
-        init_weights(self.model)
+        #init_weights(self.model)
+        
+        self.use_gpu = False
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
+            self.use_gpu = True
 
     def forward(self, x):
         out = self.model(x)
@@ -39,5 +44,7 @@ class VanillaG(nn.Module):
     def generate_samples(self, num_samples):
         print('\nGenerating {} samples'.format(num_samples))
         noise = torch.randn(num_samples, self.z_dim)
+        if self.use_gpu:
+            noise = noise.cuda()
         samples = self.model(noise)
         return samples.view(samples.size(0), self.img_size[2], self.img_size[0], self.img_size[1])
