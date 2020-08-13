@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 def make_dir(folder):
     if not os.path.exists(folder):
@@ -6,3 +7,5 @@ def make_dir(folder):
         os.makedirs(folder)
     else:
         print('Existing directory: {}'.format(folder))
+
+
