@@ -24,7 +24,13 @@ def run_experiment(**kwargs):
         out_nonlinearity=kwargs['d_out_nonlinearity'],
     )
 
-    dataloader = get_MNIST_loader(kwargs['batch_size'])
+
+    if kwargs['data_type'] == 'mnist':
+        dataloader = get_MNIST_loader(kwargs['batch_size'])
+    elif kwargs['data_type'] == 'kmnist':
+        dataloader = get_KMNIST_loader(kwargs['batch_size'])
+    else:
+        raise NotImplementedError
 
 
 
@@ -47,6 +53,7 @@ if __name__ == '__main__':
 
     config = {
         'gpu_id': 0,
+        'data_type': 'kmnist',
         'img_size': img_size,
 
         # Generator Params
@@ -58,7 +65,7 @@ if __name__ == '__main__':
         # Discriminator Params
         'd_out_dim': 1,
         'd_hidden_layers': [1024, 512, 256],
-        'dropout': 0.5,
+        'dropout': 0.4,
         'd_hidden_nonlinearity': nn.LeakyReLU,
         'd_out_nonlinearity': nn.Sigmoid,
 
@@ -67,10 +74,10 @@ if __name__ == '__main__':
 
         # Trainer Params
         'k': 1,
-        'lr': 1e-4,
-        'num_epochs': 500,
+        'lr': 5e-4,
+        'num_epochs': 1000,
         'num_samples': 10,
-        'log_dir': 'experiments/VanillaGAN'
+        'log_dir': 'experiments/VanillaGAN_KMNIST/1'
     }
 
     run_experiment(**config)
