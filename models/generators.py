@@ -101,6 +101,8 @@ class CycleG(nn.Module):
         modules = [down_sampler] + [residual_blocks] + [upsampler]
         self.model = nn.Sequential(*modules)
 
+        init_weights(self.model)
+
     def forward(self, x):
         out = self.model(x)
         return out

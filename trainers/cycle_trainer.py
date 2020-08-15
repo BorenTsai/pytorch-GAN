@@ -8,7 +8,7 @@ from tensorboardX import SummaryWriter
 
 from trainers.utils import *
 from utils.image_buffer import ImageBuffer
-from utils.img2torch import img2torch
+#from utils.img2torch import img2torch
 
 class Trainer:
     def __init__(self,
@@ -49,8 +49,10 @@ class Trainer:
         if (self.gpu_id not in [-1, None]) and (torch.cuda.is_available()):
             self.is_gpu = True
             torch.cuda.set_device(self.gpu_id)
-            self.generator.to(self.gpu_id)
-            self.discriminator.to(self.gpu_id)
+            self.G.to(self.gpu_id)
+            self.F.to(self.gpu_id)
+            self.Dx.to(self.gpu_id)
+            self.Dy.to(self.gpu_id)
         else:
             self.is_gpu = False
             self.gpu_id = None
@@ -91,7 +93,7 @@ class Trainer:
                 total_steps += 1
                 pbar.update(n=1)
 
-            self.log_avg_loss(G_loss=np.mean(G_losses[-50:]), D_loss=np.mean(D_losses[-50:]), writer=writer, mode='Train')
+            self.log_avg_loss(G_loss=np.mean(G_losses[-50:]), D_loss=np.mean(D_losses[-50:]), writer=writer, epoch=epoch, mode='Train')
 
             self.fake_from_imbuffer.clear()
             self.fake_to_imbuffer.clear()
@@ -102,7 +104,7 @@ class Trainer:
 
                 G_losses = []
                 D_losses = []
-                print('Epoch {}, Test Itr {}'.format(epoch // 10))
+                print('Epoch {}, Test Itr {}'.format(epoch, epoch // 10))
                 for from_info, to_info in self.test_dataloader:
                     G_loss, D_loss = self.forward(from_info, to_info)
                     G_losses.append(G_loss); D_losses.append(D_loss)
@@ -113,7 +115,7 @@ class Trainer:
                 print('Test Avg Generator Loss: {}'.format(G_mean_loss))
                 print('Test Avg Discriminator Loss: {} '.format(D_mean_loss))
 
-                self.log_avg_loss(G_loss=G_mean_loss, D_loss=D_mean_loss, writer=writer,
+                self.log_avg_loss(G_loss=G_mean_loss, D_loss=D_mean_loss, writer=writer, epoch=epoch,
                                   mode='Test')
 
                 self.write_images(writer=writer, epoch=epoch)
@@ -129,6 +131,10 @@ class Trainer:
 
         self.from_path = from_info['from_path']
         self.to_path = to_info['to_path']
+
+        if self.is_gpu:
+            from_img = from_img.to(self.gpu_id)
+            to_img = to_img.to(self.gpu_id)
 
         self.fake_to = self.G(from_img)
         self.fake_from = self.F(to_img)
@@ -154,8 +160,8 @@ class Trainer:
     def train_generator(self, from_img, to_img):
         self.G_optim.zero_grad()
 
-        GANLoss = self.GANCriterion(self.eval_fake_from, torch.ones_like(self.eval_fake_from)) + \
-                  self.GANCriterion(self.eval_fake_to, torch.ones_like(self.eval_fake_to))
+        GANLoss = self.GANCriterion(self.eval_fake_from, self.ones) + \
+                  self.GANCriterion(self.eval_fake_to, self.ones)
 
         CycleLoss = self.CycleCriterion(from_img, self.F(self.fake_to)) + \
                        self.CycleCriterion(to_img, self.G(self.fake_from))
@@ -199,12 +205,12 @@ class Trainer:
 
         return batch_info
 
-    def log_avg_loss(self, G_loss, D_loss, writer, mode='Train'):
-        writer.add_scalar('{}/Generator/AvgLoss'.format(mode), G_loss)
+    def log_avg_loss(self, G_loss, D_loss, writer, epoch, mode='Train'):
+        writer.add_scalar('{}/Generator/AvgLoss'.format(mode), G_loss, epoch)
         # writer.add_scalar('Generator/GANLoss', G_batch_info['GANLoss'])
         # writer.add_scalar('Generator/CycleLoss', G_batch_info['CycleLoss'])
 
-        writer.add_scalar('{}/Discriminator/AvgLoss'.format(mode), D_loss)
+        writer.add_scalar('{}/Discriminator/AvgLoss'.format(mode), D_loss, epoch)
         # writer.add_scalar('Discriminator/DyLoss', D_batch_info['DyLoss'])
         # writer.add_scalar('Discriminator/DxLoss', D_batch_info['DxLoss'])
         
@@ -212,11 +218,11 @@ class Trainer:
         G_samples = [self.fake_to_imbuffer.sample() for _ in range(5)]
         F_samples = [self.fake_from_imbuffer.sample() for _ in range(5)]
 
-        for idx in range(G_samples):
+        for idx in range(5):
             fake_to, to_path = G_samples[idx]
             fake_from, from_path = F_samples[idx]
 
-            sample = vutils.make_grid([fake_to, fake_from], normalize=True, range=(-1, 1))
+            sample = vutils.make_grid([fake_to[0], fake_from[0]], normalize=True, range=(-1, 1))
 
             writer.add_image('Sample No. {}'.format(idx), sample, epoch)
         

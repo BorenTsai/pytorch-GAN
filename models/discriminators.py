@@ -71,6 +71,8 @@ class CycleD(nn.Module):
             nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=1) #70 FOV
         )
 
+        init_weights(self.model)
+
     def forward(self, x):
         out = self.model(x)
         return out

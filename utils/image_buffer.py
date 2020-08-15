@@ -10,7 +10,7 @@ class ImageBuffer():
         self._size = 0
 
     def size(self):
-        return self._size
+        return len(self.im_buffer)
 
     def add(self, img, path):
         # if buffer has reached max capacity, remove oldest image
@@ -20,14 +20,13 @@ class ImageBuffer():
 
         self.im_buffer.append(img)
         self.im_path_buffer.append(path)
-        self._size += 1
 
     def get_img(self, img, path):
         if self.size() == 0:
             self.add(img, path)
             return img
         else:
-            sample = np.random.choice(self.buffer)
+            sample = np.random.choice(self.im_buffer)
             self.add(img, path)
             return sample
 
@@ -40,3 +39,4 @@ class ImageBuffer():
     def clear(self):
         self.im_buffer = []
         self.im_path_buffer = []
+        self._size = 0

@@ -33,14 +33,14 @@ def run_experiment(**kwargs):
     )
 
     train_dataloader = DataLoader(
-        dataset=train_dataset,
+            dataset=train_dataset,
         batch_size=kwargs['batch_size'],
         shuffle=True,
         num_workers=1
     )
 
     test_dataloader = DataLoader(
-        dataset=test_dataset,
+            dataset=test_dataset,
         batch_size=kwargs['batch_size'],
         shuffle=True,
         num_workers=1
@@ -63,9 +63,9 @@ def run_experiment(**kwargs):
 
 if __name__ == '__main__':
     config = {
-        'gpu_id': -1,
+        'gpu_id': 0,
         'log_dir': './experiments/CycleGAN_test',
-        'num_epochs': 200,
+        'num_epochs': 100,
 
         'img_size': [256, 256],
         'padding': 'reflection',
